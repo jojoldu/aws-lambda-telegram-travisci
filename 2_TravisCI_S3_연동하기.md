@@ -44,13 +44,40 @@ S3에 json파일을 올리는걸 사람이 수동으로 계속 할수는 없습�
 
 ![travis1](./images/2/travis1.png)
 
+저장소를 검색하고 활성화 버튼을 클릭합니다.
+
 ![travis2](./images/2/travis2.png)
 
 활성화가 된 뒤에 다시 메인페이지로 가보시면 저장소가 등록된 것을 확인할 수 있습니다.
 
 ![travis3](./images/2/travis3.png)
 
-현재 ```.travis.yml```이 없어 빌드를 진행할수 없습니다.  
+현재 ```.travis.yml```이 없어 빌드를 진행할 수 없습니다.  
+그래서 프로젝트와 Travis CI를 연동하겠습니다.
+
+### AWS S3 Bucket 생성 및 IAM User 생성
+
+연동하기전에 먼저 **json 데이터를 보관할 S3 bucket을 생성**하겠습니다.  
+
+![s1](./images/2/s1.png)
+
+![s2](./images/2/s2.png)
+
+![s3](./images/2/s3.png)
+
+![iam0](./images/2/iam0.png)
+
+![iam1](./images/2/iam1.png)
+
+![iam2](./images/2/iam2.png)
+
+![iam3](./images/2/iam3.png)
+
+
+
+### Travis CI와 프로젝트 연동
+
+먼저 데이터를 담을 db.json을 만들겠습니다
 
 ```js
 {
@@ -74,5 +101,43 @@ S3에 json파일을 올리는걸 사람이 수동으로 계속 할수는 없습�
   ]
 }
 ```
+
+그리고 
+그리고 ```.travis.yml```을 생성합니다.
+
+```yaml
+language: node_js
+node_js:
+  - "6"
+
+branches:
+  only:
+    - master
+
+# deploy전에 실행할 명령어
+before_deploy:
+  - mkdir -p deploy
+  - mv db.json deploy/db.json
+
+deploy:
+  - provider: s3
+    access_key_id: $AWS_ACCESS_KEY # Travis CI에서 설정한 AWS_ACCESS_KEY
+    secret_access_key: $AWS_SECRET_KEY # Travis CI에서 설정한 AWS_SECRET_KEY
+    bucket: junior-recruit-scheduler # S3 bucket 명
+    region: ap-northeast-2
+    skip_cleanup: true
+    local_dir: deploy # S3로 올릴 디렉토리 대상 (before_deploy에서 생성함)
+    acl: public_read
+    wait-until-deployed: true
+    on:
+      repo: jojoldu/aws-lambda-telegram-travisci # 저장소 이름
+      branch: master
+
+after_deploy:
+  - echo "S3 업로드 끝났습니다."
+```
+
+
+> Telegram으로 Travis CI 배포 알람을 받고 싶으시다면 이전에 포스팅한 [4. 텔레그램 연동](http://jojoldu.tistory.com/275)을 참고해보세요!
 
 ## 2-2. AWS Lambda & S3 연동하기
