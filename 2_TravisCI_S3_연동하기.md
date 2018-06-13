@@ -57,13 +57,18 @@ S3에 json파일을 올리는걸 사람이 수동으로 계속 할수는 없습�
 
 ### AWS S3 Bucket 생성 및 IAM User 생성
 
-연동하기전에 먼저 **json 데이터를 보관할 S3 bucket을 생성**하겠습니다.  
+재일 먼저 **json 데이터를 보관할 S3 bucket을 생성**하겠습니다.  
 
 ![s1](./images/2/s1.png)
 
 ![s2](./images/2/s2.png)
 
 ![s3](./images/2/s3.png)
+
+자 그리고 Travis CI가 S3에 json 파일을 업로드 할 수 있도록 사용자를 하나 생성하겠습니다.  
+
+> AWS 서비스 외에 다른 서버 혹은 서비스에서 AWS 서비스를 쓰려면 IAM User를 생성해서 해당 계정의 키를 사용해야만 합니다. (ex: IDC 서버에서 AWS S3를 쓰거나, Travis CI에서 Code Deploy 쓰는 등)  
+IAM Role 할당은 AWS 서비스내에서만 가능하기 때문입니다.  
 
 ![iam0](./images/2/iam0.png)
 
@@ -102,7 +107,10 @@ S3에 json파일을 올리는걸 사람이 수동으로 계속 할수는 없습�
 }
 ```
 
-그리고 
+> 우아한형제들 채용중입니다 여러분!  
+[채용공고](http://bit.ly/2HL4FQs)
+
+
 그리고 ```.travis.yml```을 생성합니다.
 
 ```yaml
