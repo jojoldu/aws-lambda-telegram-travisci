@@ -338,3 +338,5 @@ script: "node src/build.js"
 ```
 
 ![build2](./images/2/build2.png)
+
+* ```script```는 ```before_deploy```보다 먼저 실행됩니다.
