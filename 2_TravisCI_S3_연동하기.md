@@ -340,3 +340,15 @@ script: "node src/build.js"
 ![build2](./images/2/build2.png)
 
 * ```script```는 ```before_deploy```보다 먼저 실행됩니다.
+
+자 이렇게 변경 후 다시 commit & push 하시게 되면!  
+
+![build3](./images/2/build3.png)
+
+성공적으로 json 파일이 검증되는 것을 알 수 있습니다!  
+  
+어떠신가요?
+이제 최소의 비용으로 데이터를 관리하고 bot으로 응답할수 있게 되었습니다!  
+다음 시간에는 여기서 좀더 나아가서 전체 공지 하는 기능을 소개드리겠습니다.  
+고맙습니다 :)
+
