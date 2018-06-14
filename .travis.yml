@@ -15,7 +15,7 @@ deploy:
   - provider: s3
     access_key_id: $AWS_ACCESS_KEY # Travis CI에서 설정한 AWS_ACCESS_KEY
     secret_access_key: $AWS_SECRET_KEY # Travis CI에서 설정한 AWS_SECRET_KEY
-    bucket: junior-recruit-scheduler # S3 bucket 명
+    bucket: aws-lambda-telegram-travisci # S3 bucket 명
     region: ap-northeast-2
     skip_cleanup: true
     local_dir: deploy # S3로 올릴 디렉토리 대상 (before_deploy에서 생성함)
