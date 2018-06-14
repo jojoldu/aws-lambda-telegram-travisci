@@ -6,6 +6,8 @@ branches:
   only:
     - master
 
+script: "node src/build.js"
+
 # deploy전에 실행할 명령어
 before_deploy:
   - mkdir -p deploy
@@ -27,3 +29,6 @@ deploy:
 
 after_deploy:
   - echo "S3 업로드 끝났습니다."
+
+notifications:
+  webhooks: https://fathomless-fjord-24024.herokuapp.com/notify

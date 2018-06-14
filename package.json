@@ -5,6 +5,5 @@
   "scripts": {
     "test": "echo \"no test specified\""
   },
-  "dependencies": {
-  }
+  "dependencies": {},
 }

@@ -156,7 +156,7 @@ TravisCI에서는 Node 환경의 프로젝트는 ```npm run test```를 수행하
 
 ```js
 
-"test": "echo \"Error: no test specified\" && exit 1"
+"test": "echo \"no test specified\""
 
 ```
 
@@ -193,42 +193,148 @@ TravisCI에서는 Node 환경의 프로젝트는 ```npm run test```를 수행하
 > 우아한형제들 채용중입니다 여러분!  
 [채용공고](http://bit.ly/2HL4FQs)
 
+이렇게 다 하셨다면 이제 **commit & push 할때마다 S3에 db.json**이 바로 올라갑니다.  
+그럼 한번 해볼까요?
 
-그리고 ```.travis.yml```을 생성합니다.
+![yml3](./images/2/yml3.png)
 
-```yaml
-language: node_js
-node_js:
-  - "6"
+Travis CI의 빌드가 끝나고 S3를 확인해보시면!
 
-branches:
-  only:
-    - master
+![yml4](./images/2/yml4.png)
 
-# deploy전에 실행할 명령어
-before_deploy:
-  - mkdir -p deploy
-  - mv db.json deploy/db.json
-
-deploy:
-  - provider: s3
-    access_key_id: $AWS_ACCESS_KEY # Travis CI에서 설정한 AWS_ACCESS_KEY
-    secret_access_key: $AWS_SECRET_KEY # Travis CI에서 설정한 AWS_SECRET_KEY
-    bucket: junior-recruit-scheduler # S3 bucket 명
-    region: ap-northeast-2
-    skip_cleanup: true
-    local_dir: deploy # S3로 올릴 디렉토리 대상 (before_deploy에서 생성함)
-    acl: public_read
-    wait-until-deployed: true
-    on:
-      repo: jojoldu/aws-lambda-telegram-travisci # 저장소 이름
-      branch: master
-
-after_deploy:
-  - echo "S3 업로드 끝났습니다."
-```
+이렇게 S3에 db.json 이 잘 올라간것을 확인할 수 있습니다.
 
 
 > Telegram으로 Travis CI 배포 알람을 받고 싶으시다면 이전에 포스팅한 [4. 텔레그램 연동](http://jojoldu.tistory.com/275)을 참고해보세요!
 
 ## 2-2. AWS Lambda & S3 연동하기
+
+자 이제 이 S3에 올라간 db.json 파일을 AWS Lambda에서 사용해보겠습니다.  
+1편에서 만든 Lambda의 코드를 아래처럼 변경하겠습니다.  
+
+```js
+
+const TOKEN = process.env.TOKEN; //환경변수에 등록한 값
+const JSON_URL = process.env.JSON_URL; //환경변수에 등록한 값
+
+const https = require('https');
+const util = require('util');
+const { StringDecoder } = require('string_decoder');
+const decoder = new StringDecoder('utf8');
+
+exports.handler = (event, context) => {
+    console.log('event: ', JSON.stringify(event));
+    const chatId = event.message.chat.id;
+    const requestText = event.message.text;
+
+    // /recruits로 오면 db.json 내용 반환
+    if(requestText === "/recruits"){
+        // db.json 호출
+        https.get(JSON_URL, (res) => {
+            res.on('data', (d) => { 
+                const strJson = decoder.write(d); //db.json 데이터를 js에서 인식할 수 있는 문자열로 decode
+                const recruits = JSON.parse(strJson).recruits; // json string을 json으로 전환후 recruits 배열을 반환
+                const content = {
+                    "chat_id": chatId,
+                    "text": toMessage(recruits)
+                };
+                sendMessage(context, content);
+            });
+        });
+    } else {
+        // 나머지 메세지는 온 그대로 전달
+        const content = {
+            "chat_id": chatId,
+            "text": requestText
+        };
+        sendMessage(context, content);
+    }
+};
+
+function toMessage(recruits) {
+    return recruits
+        .map( (r) => r.team + " ("+r.link+")")
+        .join("\n");
+}
+
+function sendMessage(context, content) {
+    const options = {
+        method: 'POST',
+        hostname: 'api.telegram.org',
+        port: 443,
+        headers: {"Content-Type": "application/json"},
+        path: "/bot" + TOKEN + "/sendMessage"
+    };
+
+    const req = https.request(options, (res) => {
+        res.setEncoding('utf8');
+        res.on('data', (chunk) => {
+            context.done(null);
+        });
+    });
+
+    req.on('error', function (e) {
+        console.log('problem with request: ' + e.message);
+    });
+
+    req.write(util.format("%j", content));
+    req.end();
+}
+
+```
+
+그리고 최상단에서 사용한 JSON_URL을 환경변수에 등록하겠습니다.  
+JSON_URL은 db.json의 url입니다.  
+S3로 가보시면 바로 확인할 수 있습니다.
+
+![lambda2](./images/2/lambda2.png)
+
+이 값을 환경변수에 등록합니다.
+
+![lambda3](./images/2/lambda3.png)
+
+자 이제 모든 작업이 끝났습니다!  
+
+### Telegram 테스트 #1
+
+Lambda 코드를 저장하신 후, Telegram에 ```/recruits``` 메세지를 보내보겠습니다.
+그러면!
+
+![test1](./images/2/test1.png)
+
+이렇게 아주 메세지가 잘 전달되는것을 확인할 수 있습니다!
+
+## 2-3. db.json 검증하기
+
+여기서 끝나면 조금 찝찝합니다.  
+db.json 파일에 오타가 있는데 이걸 검증하는 코드거 어디에도 없죠?  
+json 파일이 언제든지 오타로 인해 깨질 수 있기 때문에 이에 대한 검증 코드를 추가하겠습니다.  
+  
+방법은 간단합니다.  
+**Travis CI에서 빌드 시작시 db.json 파일을 읽어** ```JSON.parse```가 **가능한지를 확인**합니다.  
+  
+먼저 ```src``` 디렉토리를 생성하고 그 안에 ```build.js```를 추가합니다.
+
+![build1](./images/2/build1.png)
+
+```js
+const fs = require('fs');
+fs.readFile('db.json', 'utf8', (err, data) => {
+    if (err) throw err;
+    try {
+        JSON.parse(data);
+    } catch (e) {
+        throw e;
+    }
+
+    console.log('JSON Compile Success');
+});
+```
+
+그리고 ```.travis.yml```에 ```build.js```를 실행하는 코드를 추가하겠습니다.
+
+```yml
+script: "node src/build.js"
+```
+
+![build2](./images/2/build2.png)
